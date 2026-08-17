@@ -9,12 +9,16 @@ import yaml
 from model import GatewayConfig
 from pydantic import ValidationError
 
+
+
+
 def handle_upload(e):
     
     config_container.clear()
     advisor_container.clear()
     error_container.clear()
-    content = e.file._data #check for a better API to access the bytes of this object
+    preview_container.clear()
+    content = e.file._data.decode('utf-8') #check for a better API to access the bytes of this object
     '''###############Debugger#############'''
     pprint(content)
     '''##############################'''
@@ -22,27 +26,46 @@ def handle_upload(e):
     config = yaml.safe_load(content) 
     pprint(config) 
     
+    with preview_container.classes('w-full max-w-4xl items-center'):
+        with preview_container:
+            with ui.card().classes('w-full p-5 rounded-xl border border-blue-400 bg-slate-900'):
+                ui.label('Configuration Preview').classes('text-xl font-bold text-white')
+
+            with ui.column().classes('w-full p-3 rounded-lg bg-[#0B1220] gap-1'):
+                for i, line in enumerate(content.splitlines(), start=1):
+                    with ui.row().classes('w-full gap-3'):
+                        ui.label(str(i)).classes('text-gray-500 font-mono w-6')
+                        ui.label(line).classes('text-white font-mono')
+    
     try:
         gateway_config = GatewayConfig.model_validate(config)
         ui.notify('File validated', color='green')
-        with config_container:
+        with config_container.classes('w-full max-w-4xl items-center'):
             print('Reached config container')
             with ui.card().classes('p-5 border border-blue-400 rounded-xl bg-slate-900'):
                 with ui.row().classes('w-full justify-between items-center'):
                     ui.label('Deployment Configuration').classes('text-2xl font-bold text-white text-left')
-                    ui.badge('Validated').props('color=green')
+                    ui.badge('Validated').props('color=blue')
                 deployment = gateway_config.model_list[0]
-                with ui.column().classes('items-left justify-between w-full gap-4'):
-                    ui.label(f'Deployment Name: {deployment.model_name}')
-                    ui.label(f'Model: {deployment.litellm_params.model}')
+                with ui.column().classes('w-full gap-4 p-5 rounded-xl bg-slate-800 border border-blue-500'):
+                    with ui.row().classes('w-full justify-between items-center'):
+                        ui.label('Model Name:')
+                        ui.label(f'{deployment.model_name}').classes('text-lg font-semibold text-white')
+                        
+                    with ui.row().classes('w-full justify-between items-center'):
+                        ui.label('Deployment')
+                        ui.label(deployment.litellm_params.model).classes('text-lg font-semibold text-white')
+                        
     
                 
     except ValidationError:
-        gateway_config=None
-        ui.notify('Error validating the configuration', color='red')
-        with error_container:
-            with ui.card().classes('p-5 border border-blue-400 rounded-xl bg-slate-900'):
-                ui.label('Error')
+        if not content.strip():
+            ui.notify('No content in the uploaded file', color='yellow')
+        else:
+            ui.notify('Error validating the configuration', color='red')
+            with error_container:
+                with ui.card().classes('w-full p-3 rounded-lg bg-slate-800 border border-red-500'):
+                    ui.label('Error')
                 
     
     return gateway_config
@@ -66,9 +89,13 @@ with ui.column().classes('w-full items-center'):
              'animate-pulse').props('color=primary unelevated').props("label='Choose File' color=primary flat")
             
             # Placeholders live here
+            preview_container = ui.column().classes('w-full max-w-4xl')
             config_container = ui.column().classes('w-full max-w-4xl')
+            
             advisor_container = ui.column().classes('w-full max-w-4xl')
             error_container = ui.column().classes('w-full max-w-4xl')
+            
+            
     
 
 ui.run(dark=True)
