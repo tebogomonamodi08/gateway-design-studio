@@ -1,7 +1,9 @@
-from fastapi import FastAPI, UploadFile
+from nicegui import ui
 
-app = FastAPI(debug=True, title= 'Fast_Playground')
+def handle():
+    ui.run_javascript('alert("Press")')
 
-@app.post('/uploadfile')
-async def handle_upload(file: UploadFile):
-    return {'name':file.filename}
+ui.button('Press', on_click=handle)
+
+ui.run(dark=True)
+
