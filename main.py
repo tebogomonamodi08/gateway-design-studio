@@ -2083,6 +2083,8 @@ def index() -> None:
 
 
 ui.run(
+    host='0.0.0.0',
+    port='8080',
     dark=True,
     title="Gateway Design Studio",
 )
