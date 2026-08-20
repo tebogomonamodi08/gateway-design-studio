@@ -1,5 +1,3 @@
-nicegui==1.2.0
-fastapi==0.95.2
-uvicorn==0.22.0
-pydantic==2.5.1
-PyYAML==6.0
+nicegui
+pydantic
+PyYAML>=6.0.2
