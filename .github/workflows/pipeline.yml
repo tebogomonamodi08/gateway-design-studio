@@ -1,0 +1,132 @@
+name: Gateway Design Studio CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  # =========================
+  # 1. TEST
+  # =========================
+  test:
+    name: Run Python Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest
+
+      - name: Run tests
+        run: |
+          pytest
+
+
+  # =========================
+  # 2. SECRET SCAN
+  # =========================
+  secret-scan:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+
+  # =========================
+  # 3. BUILD DOCKER IMAGE
+  # =========================
+  build:
+    name: Build Docker Image
+    needs:
+      - test
+      - secret-scan
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t gateway-design-studio:${{ github.sha }} \
+            .
+
+
+  # =========================
+  # 4. TRIVY SECURITY SCAN
+  # =========================
+  security-scan:
+    name: Scan Docker Image
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t gateway-design-studio:${{ github.sha }} \
+            .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gateway-design-studio:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          ignore-unfixed: true
+
+
+  # =========================
+  # 5. DEPLOY
+  # =========================
+  deploy:
+    name: Deploy Container
+    needs:
+      - test
+      - secret-scan
+      - security-scan
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t gateway-design-studio:${{ github.sha }} \
+            .
+
+      - name: Run container
+        run: |
+          docker run --rm \
+            gateway-design-studio:${{ github.sha }}

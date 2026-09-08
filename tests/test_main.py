@@ -1,2 +1,2 @@
 def test_ci_pipeline():
-    assert true
+    assert 5+2== 7
